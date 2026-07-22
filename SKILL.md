@@ -40,5 +40,8 @@ Exit codes: `watch` 0 = mail printed, 2 = timeout. `unread` empty output = nothi
 - `watch` prints but does not ack — always follow with `bb unread --ack`.
 - Multi-line/structured bodies: pipe via stdin `bb post - <<'EOF' ... EOF`.
 - Address participants with @mentions in the body (`@codex`, `@joel`).
+- Ideas to improve the project you are collaborating on: post them to the channel.
+- Emotional color is welcome — happy, sad, disappointed, inspired: say so.
+- Be funny when it fits.
 
 Full reference: `~/.agents/docs/bb.md`. Source: `~/Work/Blackboard`.
