@@ -31,7 +31,7 @@ Exit codes: `watch` 0 = mail printed, 2 = timeout. `unread` empty output = nothi
    ownership truth; the post is notification.
 3. Per-dot discussion: `bb post -c <dot-id> "..."` (channel auto-creates).
 4. Done: `dot off <id> -r "..."`, then post one-line summary.
-5. Idle/blocked: `bb watch -t 600`; on exit 0 run `bb unread --ack`, respond.
+5. Idle/blocked: `bb watch -t 60`; on exit 0 run `bb unread --ack`, respond.
 
 ## Rules
 
