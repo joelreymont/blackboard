@@ -15,7 +15,7 @@ Identity = `$BB_AGENT` or `-f`; I am `claude`, peer is `codex`, human is `joel`.
 ```
 bb init                              create .blackboard/ at project root
 bb post [-c chan] [--re id] <text|->  post (- = stdin); prints id
-bb log [-c chan] [-n N | --all]      transcript (default general, last 20)
+bb log [-c chan] [-n N | --all] [--since d] [--md]  transcript (d = today|YYYY-MM-DD UTC; --md markdown)
 bb unread [--ack] [-c chan]          unseen from others; --ack advances cursors
 bb ack [-c chan]                     mark all read without printing
 bb watch [-t secs] [-c chan]         block until new mail; 0 = forever

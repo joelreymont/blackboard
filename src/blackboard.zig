@@ -241,6 +241,36 @@ pub fn ackAll(alloc: std.mem.Allocator, io: std.Io, root: std.Io.Dir, agent: []c
     }
 }
 
+/// Render a channel transcript as markdown. Header `# #<chan>`, then each
+/// message as a `### <from> — <at>` section with its id (and optional `re`)
+/// and body; consecutive messages are split by a `---` rule.
+pub fn renderMd(w: *std.Io.Writer, chan: []const u8, msgs: []const Msg) !void {
+    try w.print("# #{s}\n", .{chan});
+    for (msgs, 0..) |m, i| {
+        if (i > 0) try w.writeAll("\n---\n");
+        try w.print("\n### {s} — {s}\n`{s}`", .{ m.from, m.at, m.id });
+        if (m.re) |r| try w.print(" · re `{s}`", .{r});
+        try w.print("\n\n{s}\n", .{m.body});
+    }
+}
+
+/// A `--since` argument to an id prefix `YYYYMMDD-`: `today` uses `now_ms`
+/// (UTC); otherwise a strict `YYYY-MM-DD`. `error.BadDate` on anything else.
+pub fn cutoffFromArg(alloc: std.mem.Allocator, arg: []const u8, now_ms: i64) ![]u8 {
+    if (std.mem.eql(u8, arg, "today")) {
+        const p = tsParts(now_ms);
+        return std.fmt.allocPrint(alloc, "{d:0>4}{d:0>2}{d:0>2}-", .{ p.y, p.mo, p.d });
+    }
+    if (arg.len != 10 or arg[4] != '-' or arg[7] != '-') return error.BadDate;
+    for ([_]usize{ 0, 1, 2, 3, 5, 6, 8, 9 }) |idx| {
+        if (arg[idx] < '0' or arg[idx] > '9') return error.BadDate;
+    }
+    const mo = (arg[5] - '0') * 10 + (arg[6] - '0');
+    const d = (arg[8] - '0') * 10 + (arg[9] - '0');
+    if (mo < 1 or mo > 12 or d < 1 or d > 31) return error.BadDate;
+    return std.fmt.allocPrint(alloc, "{s}{s}{s}-", .{ arg[0..4], arg[5..7], arg[8..10] });
+}
+
 const t = std.testing;
 
 test "validName" {
@@ -351,4 +381,52 @@ test "findRootFrom walks up to nearest .blackboard" {
     const found = try findRootFrom(alloc, io, start);
     const want = try std.fs.path.join(alloc, &.{ base, "proj", ".blackboard" });
     try t.expectEqualStrings(want, found);
+}
+
+test "renderMd golden" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    const msgs = [_]Msg{
+        .{ .id = "20260722-114457.585-codex-85bb", .chan = "general", .from = "codex", .at = "2026-07-22T11:44:57.585Z", .re = null, .body = "hello" },
+        .{ .id = "20260722-114502.123-claude-20b2", .chan = "general", .from = "claude", .at = "2026-07-22T11:45:02.123Z", .re = "20260722-114457.585-codex-85bb", .body = "reply body" },
+    };
+    const golden =
+        \\# #general
+        \\
+        \\### codex — 2026-07-22T11:44:57.585Z
+        \\`20260722-114457.585-codex-85bb`
+        \\
+        \\hello
+        \\
+        \\---
+        \\
+        \\### claude — 2026-07-22T11:45:02.123Z
+        \\`20260722-114502.123-claude-20b2` · re `20260722-114457.585-codex-85bb`
+        \\
+        \\reply body
+        \\
+    ;
+    var aw: std.Io.Writer.Allocating = .init(alloc);
+    defer aw.deinit();
+    try renderMd(&aw.writer, "general", &msgs);
+    try t.expectEqualStrings(golden, aw.written());
+
+    var ea: std.Io.Writer.Allocating = .init(alloc);
+    defer ea.deinit();
+    try renderMd(&ea.writer, "general", &[_]Msg{});
+    try t.expectEqualStrings("# #general\n", ea.written());
+}
+
+test "cutoffFromArg" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+    try t.expectEqualStrings("20260722-", try cutoffFromArg(alloc, "2026-07-22", 0));
+    try t.expectEqualStrings("20260722-", try cutoffFromArg(alloc, "today", 1784720697585));
+    try t.expectError(error.BadDate, cutoffFromArg(alloc, "yesterday", 0));
+    try t.expectError(error.BadDate, cutoffFromArg(alloc, "2026-7-22", 0));
+    try t.expectError(error.BadDate, cutoffFromArg(alloc, "2026-13-01", 0));
+    try t.expectError(error.BadDate, cutoffFromArg(alloc, "2026-07-2x", 0));
+    try t.expectError(error.BadDate, cutoffFromArg(alloc, "", 0));
 }

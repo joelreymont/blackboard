@@ -11,7 +11,7 @@ const usage_text =
     \\usage:
     \\  bb init                                   create .blackboard/ in cwd
     \\  bb post [-c chan] [-f who] [--re id] <text|->  post message (- reads stdin)
-    \\  bb log [-c chan] [-n N | --all]           channel transcript (default general, last 20)
+    \\  bb log [-c chan] [-n N | --all] [--since d] [--md]  transcript (d = today | YYYY-MM-DD, UTC)
     \\  bb unread [-f who] [-c chan] [--ack]      unseen messages from others
     \\  bb ack [-f who] [-c chan]                 mark everything read
     \\  bb watch [-f who] [-c chan] [-t secs]     block until new mail (0 = forever)
@@ -24,7 +24,7 @@ const usage_text =
 
 const Cmd = enum { init, post, log, unread, ack, channels, watch };
 
-const Flag = enum { chan, from, re, n, t, ack, all, help };
+const Flag = enum { chan, from, re, n, t, ack, all, md, since, help };
 
 const flag_map = std.StaticStringMap(Flag).initComptime(.{
     .{ "-c", .chan },
@@ -34,6 +34,8 @@ const flag_map = std.StaticStringMap(Flag).initComptime(.{
     .{ "-t", .t },
     .{ "--ack", .ack },
     .{ "--all", .all },
+    .{ "--md", .md },
+    .{ "--since", .since },
     .{ "-h", .help },
     .{ "--help", .help },
 });
@@ -47,6 +49,9 @@ const Args = struct {
     t: u32 = default_watch_secs,
     ack: bool = false,
     all: bool = false,
+    md: bool = false,
+    since: ?[]const u8 = null,
+    n_set: bool = false,
     pos: ?[]const u8 = null,
 };
 
@@ -77,6 +82,7 @@ fn parseArgs(argv: []const [:0]const u8) Args {
             .n => {
                 const v = flagVal(argv, &i, "-n");
                 a.n = std.fmt.parseInt(usize, v, 10) catch fatal("-n: not a number: {s}", .{v});
+                a.n_set = true;
             },
             .t => {
                 const v = flagVal(argv, &i, "-t");
@@ -84,6 +90,8 @@ fn parseArgs(argv: []const [:0]const u8) Args {
             },
             .ack => a.ack = true,
             .all => a.all = true,
+            .md => a.md = true,
+            .since => a.since = flagVal(argv, &i, "--since"),
             .help => {
                 std.debug.print("{s}", .{usage_text});
                 std.process.exit(0);
@@ -192,14 +200,33 @@ pub fn main(p: std.process.Init) !void {
                         error.FileNotFound => fatal("no such channel: {s}", .{chan}),
                         else => return err,
                     };
-                    const start = if (a.all or names.len <= a.n) 0 else names.len - a.n;
-                    for (names[start..]) |id| {
+                    const cut: ?[]u8 = if (a.since) |s|
+                        bb.cutoffFromArg(alloc, s, ms(io)) catch |err| switch (err) {
+                            error.BadDate => fatal("--since: want today or YYYY-MM-DD (UTC): {s}", .{s}),
+                            else => return err,
+                        }
+                    else
+                        null;
+                    var kept: std.ArrayList([]const u8) = .empty;
+                    for (names) |id| {
+                        if (cut) |c| if (std.mem.lessThan(u8, id, c)) continue;
+                        try kept.append(alloc, id);
+                    }
+                    const ids = kept.items;
+                    const whole = a.all or (a.since != null and !a.n_set);
+                    const start = if (whole or ids.len <= a.n) 0 else ids.len - a.n;
+                    var msgs: std.ArrayList(bb.Msg) = .empty;
+                    for (ids[start..]) |id| {
                         const m = bb.readMsg(alloc, io, root.dir, chan, id) catch |err| switch (err) {
                             error.BadMessage => fatal("malformed message file: channels/{s}/{s}{s}", .{ chan, id, bb.ext }),
                             else => return err,
                         };
-                        try renderMsg(out, m);
+                        try msgs.append(alloc, m);
                     }
+                    if (a.md)
+                        try bb.renderMd(out, chan, msgs.items)
+                    else
+                        for (msgs.items) |m| try renderMsg(out, m);
                 },
                 .unread => {
                     const who = identity(a, env);
