@@ -1,0 +1,68 @@
+{
+  "target": "blackboard",
+  "source": "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/single-thread-no-unwind/blackboard",
+  "source_bytes": 186840,
+  "compiler_build": {
+    "bytes": 186840,
+    "command": [
+      "/opt/homebrew/bin/zig",
+      "build-exe",
+      "-j1",
+      "-O",
+      "small",
+      "-fstrip",
+      "-lc",
+      "-fsingle-threaded",
+      "-fno-unwind-tables",
+      "-framework",
+      "CoreServices",
+      "--cache-dir",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/cache",
+      "--global-cache-dir",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/global-cache",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/blackboard-hb/benchmark/full-zig/main.zig",
+      "-femit-bin=/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/single-thread-no-unwind/blackboard"
+    ],
+    "exit_code": 0,
+    "output": "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/single-thread-no-unwind/blackboard",
+    "seconds": 1.641,
+    "sha256": "fe3e1c8693435fb2180dd8d5a31182575999ab980f33c66437e2d166f5d13135",
+    "source": "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/blackboard-hb/benchmark/full-zig/main.zig",
+    "source_files_sha256": {
+      "blackboard.zig": "dffac7a1fef988d922cb1a3d0a3359ae10a5f3d29140fb32ae0f2611ad54840b",
+      "main.zig": "5988730e7552e26092e7f6a9b89ae6143829d76aed19da55df1f45d10f9c837b"
+    },
+    "source_sha256": "5988730e7552e26092e7f6a9b89ae6143829d76aed19da55df1f45d10f9c837b",
+    "stderr": "",
+    "stdout": "",
+    "target": "blackboard",
+    "variant": "single-thread-no-unwind"
+  },
+  "commands": [
+    [
+      "/usr/bin/strip",
+      "-u",
+      "-r",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/minimal/bb"
+    ],
+    [
+      "/usr/bin/codesign",
+      "--force",
+      "--sign",
+      "-",
+      "--identifier",
+      "bb",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/minimal/bb"
+    ],
+    [
+      "/usr/bin/codesign",
+      "--verify",
+      "--strict",
+      "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/minimal/bb"
+    ]
+  ],
+  "output": "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/zig-size-options/out/blackboard/minimal/bb",
+  "bytes": 170752,
+  "sha256": "59f44fb2001fd015d35808a6bbd2fe6b283c9e9362cf17b5bdafcbb3f86a4f2c",
+  "signature_verified": true
+}

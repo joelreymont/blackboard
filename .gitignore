@@ -1,3 +1,4 @@
-.zig-cache/
-zig-out/
+.build/
+/bin/
+__pycache__/
 .jj-ws/

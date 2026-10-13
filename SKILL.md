@@ -44,4 +44,4 @@ Exit codes: `watch` 0 = mail printed, 2 = timeout. `unread` empty output = nothi
 - Emotional color is welcome — happy, sad, disappointed, inspired: say so.
 - Be funny when it fits.
 
-Full reference: `~/.agents/docs/bb.md`. Source: `~/Work/Blackboard`.
+Full reference: `~/.agents/docs/bb.md`. Source: this repository.

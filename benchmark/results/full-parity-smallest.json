@@ -1,0 +1,1159 @@
+{
+  "run_dir": "/Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/blackboard-hb/parity-xgv70k47",
+  "passed": 135,
+  "total": 135,
+  "results": [
+    {
+      "case": "channels",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "subcommand-help",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "subcommand-short-help",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "no-args",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "unknown-command",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "top-level-help-upstream-rc",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "channels-ignore-nondirs",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-ignore-symlink",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unread-ignore-nondirs",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "ack-ignore-nondirs",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unicode-channel-400-bytes",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unicode-filename-403-bytes",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "filename-id-order",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "filename-id-last",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "filename-id-ack",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-default",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-all",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-last3",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-zero",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-large-n",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-since",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-since-with-n",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-md",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-empty",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-empty-md",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-other-channel",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-invalid-filter-is-missing",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "unread-invalid-filter-is-empty",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "ack-invalid-filter-is-empty",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-value-last-wins",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-n-plus",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-n-negative-zero",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-n-underscores",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-n-uint64-max",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-t-u32-max",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "flag-t-underscores",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "root-empty-env",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "missing-empty-root",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "bb: no .blackboard/ at .blackboard (run `bb init`)\n"
+          ],
+          [
+            1,
+            "",
+            "bb: no .blackboard/ at .blackboard (run `bb init`)\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "identity-empty-env",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-root-env",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "long-invalid-identity",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "root-is-file",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "case": "init-root-file",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: NotDir\n"
+          ],
+          [
+            1,
+            "",
+            "error: NotDir\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "root-upward",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "root-env",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "nearest-root-unreadable",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ],
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "nearest-root-mode0111",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ],
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "root-symlink-loop",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: SymLinkLoop\n"
+          ],
+          [
+            1,
+            "",
+            "error: SymLinkLoop\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "channels-symlink-loop",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "read-cursor-symlink-loop",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "write-cursor-symlink-loop",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "discovery-length-boundary",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: NameTooLong\n"
+          ],
+          [
+            1,
+            "",
+            "error: NameTooLong\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "deep-cwd-log",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "deep-cwd-channels",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unread-all",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unread-filter",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "identity-env",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unread-ack",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unread-ack-filter",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "ack",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "ack-filter",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "channels-missing",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "log-missing-channels",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "channels-file",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "channel-file",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "post-channel-file",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "cursors-file",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "cursor-directory",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "ack-cursor-directory",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "unread-existing-cursor",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "unreadable-cursor",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ],
+          [
+            1,
+            "",
+            "error: AccessDenied\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "bad-identity",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-identity",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-channel",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "empty-post",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-post-text",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-date",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-number",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-number-negative",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-number-overflow",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-number-underscore-edge",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-t-overflow",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-t-negative",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-re",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-re-before-missing-body",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-flag-value",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "unknown-flag",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "extra-positional",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-channel",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-frontmatter-key",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "missing-frontmatter-at",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "bad-frontmatter-line",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "body-frontmatter-like",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "log-late-malformed-no-stdout",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "unread-late-malformed-no-stdout",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "complete-message-limit",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "cursor-limit",
+      "pass": true,
+      "detail": {
+        "rc": 1
+      }
+    },
+    {
+      "case": "newline-filename",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "long-filename-id",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "newline-channel",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "listing-over-one-megabyte",
+      "pass": true,
+      "detail": {
+        "rc": 0
+      }
+    },
+    {
+      "case": "zig-init",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "initialized /Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/blackboard-hb/parity-xgv70k47/roundtrip/zig/.blackboard\n",
+          ""
+        ]
+      }
+    },
+    {
+      "case": "zig-init-idempotent",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "case": "zig-post-argument",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "20261013-095010.106-codex-4acf\n",
+          ""
+        ],
+        "content": "---\nfrom: codex\nat: 2026-10-13T09:50:10.106Z\n---\n\nhello\nworld\n"
+      }
+    },
+    {
+      "case": "zig-post-stdin-reply",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "20261013-095010.112-codex-c10b\n",
+          ""
+        ],
+        "content": "---\nfrom: codex\nat: 2026-10-13T09:50:10.112Z\nre: prior-id\n---\n\nstdin body\n"
+      }
+    },
+    {
+      "case": "zig-roundtrip-ack",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "case": "habu-init",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "initialized /Users/joel/Documents/Codex/2026-10-12/task-5/full-ports/blackboard-hb/parity-xgv70k47/roundtrip/habu/.blackboard\n",
+          ""
+        ]
+      }
+    },
+    {
+      "case": "habu-init-idempotent",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "case": "habu-post-argument",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "20261013-095010.145-codex-01f6\n",
+          ""
+        ],
+        "content": "---\nfrom: codex\nat: 2026-10-13T09:50:10.145Z\n---\n\nhello\nworld\n"
+      }
+    },
+    {
+      "case": "habu-post-stdin-reply",
+      "pass": true,
+      "detail": {
+        "result": [
+          0,
+          "20261013-095010.151-codex-48d9\n",
+          ""
+        ],
+        "content": "---\nfrom: codex\nat: 2026-10-13T09:50:10.151Z\nre: prior-id\n---\n\nstdin body\n"
+      }
+    },
+    {
+      "case": "habu-roundtrip-ack",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "case": "deep-cwd-post",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            true,
+            [
+              0,
+              "20261013-095010.178-writer-71c4\n",
+              ""
+            ]
+          ],
+          [
+            true,
+            [
+              0,
+              "20261013-095010.188-writer-3422\n",
+              ""
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "case": "missing-tmp-post",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            true,
+            [
+              0,
+              "20261013-095010.197-writer-e730\n",
+              ""
+            ]
+          ],
+          [
+            true,
+            [
+              0,
+              "20261013-095010.206-writer-b14e\n",
+              ""
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "case": "tmp-file-post",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            true,
+            [
+              1,
+              "",
+              "error: NotDir\n"
+            ]
+          ],
+          [
+            true,
+            [
+              1,
+              "",
+              "error: NotDir\n"
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "case": "readonly-stdout",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          [
+            1,
+            "error: WriteFailed\n"
+          ],
+          [
+            1,
+            "error: WriteFailed\n"
+          ]
+        ]
+      }
+    },
+    {
+      "case": "watch-timeout",
+      "pass": true,
+      "detail": {
+        "rc": 2,
+        "zig_elapsed": 1.01,
+        "habu_elapsed": 1.01
+      }
+    },
+    {
+      "case": "watch-existing-immediate",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.01,
+        "habu_elapsed": 0.01
+      }
+    },
+    {
+      "case": "watch-existing-event",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.21,
+        "habu_elapsed": 0.17
+      }
+    },
+    {
+      "case": "watch-new-channel-event",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.17,
+        "habu_elapsed": 0.17
+      }
+    },
+    {
+      "case": "watch-filtered-new-channel-event",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.22,
+        "habu_elapsed": 0.22
+      }
+    },
+    {
+      "case": "watch-ack-flag-ignored",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.01,
+        "habu_elapsed": 0.01
+      }
+    },
+    {
+      "case": "watch-malformed-existing",
+      "pass": true,
+      "detail": {
+        "rc": 1,
+        "zig_elapsed": 0.01,
+        "habu_elapsed": 0.01
+      }
+    },
+    {
+      "case": "watch-atomic-publish",
+      "pass": true,
+      "detail": {
+        "rc": 0,
+        "zig_elapsed": 0.36,
+        "habu_elapsed": 0.34
+      }
+    },
+    {
+      "case": "watch-moved-channel-inside-board",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #alpha  now  id:a\\nalpha message\\n\\n', b'')",
+          "(True, True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #alpha  now  id:a\\nalpha message\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-moved-channel-outside-board",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #alpha  now  id:a\\nalpha message\\n\\n', b'')",
+          "(True, True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #alpha  now  id:a\\nalpha message\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-unrelated-events-timeout",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 2, b'', b'', 1.0094141249999993)",
+          "(True, 2, b'', b'', 1.0273660000000007)"
+        ]
+      }
+    },
+    {
+      "case": "watch-ignore-cursor-reset",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 2, b'', b'')",
+          "(True, 2, b'', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-ignore-existing-message-edit",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 2, b'', b'')",
+          "(True, 2, b'', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-hardlink-new-name",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:z\\nmessage\\n\\n', b'')",
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:z\\nmessage\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-delete-recreate",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nmessage\\n\\n', b'')",
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nmessage\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-rename-back",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nmessage\\n\\n', b'')",
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nmessage\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-replacement-channel",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, True, 2, b'', b'')",
+          "(True, True, 2, b'', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-concurrent-post",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  2026-10-13T09:50:28.057Z  id:20261013-095028.057-writer-e7b2\\nconcurrent body\\n\\n', b'')",
+          "(True, True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  2026-10-13T09:50:28.246Z  id:20261013-095028.246-writer-aff6\\nconcurrent body\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-root-replaced",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nORIGINAL ROOT\\n\\n', b'')",
+          "(True, 0, b'\\xe2\\x94\\x80\\xe2\\x94\\x80 writer  #general  now  id:a\\nORIGINAL ROOT\\n\\n', b'')"
+        ]
+      }
+    },
+    {
+      "case": "watch-many-channels-low-fd-limit",
+      "pass": true,
+      "detail": {
+        "outputs": [
+          "(2, b'', b'')",
+          "(2, b'', b'')"
+        ]
+      }
+    }
+  ]
+}

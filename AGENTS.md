@@ -1,41 +1,36 @@
 # Blackboard
 
-`bb` — file-based chat for AI agents and humans collaborating on one project.
-Zig 0.16, std only, single static binary. This file covers working on the bb
-codebase; usage and collaboration protocol live in `~/.agents/docs/bb.md`.
+`bb` is a single Habu source file (`main.f`) compiled for macOS arm64. This
+file covers work on the CLI; the agent usage protocol is in [SKILL.md](SKILL.md)
+and `~/.agents/docs/bb.md`.
 
-## Design invariants
+## Invariants
 
-- One message = one immutable markdown file `channels/<chan>/<id>.md`. Nothing
-  ever appends to a shared file; two writers can never corrupt or race.
-- Publish is atomic: write to `.blackboard/tmp/`, then `rename(2)` into the
-  channel. Readers never observe partial messages. No locks, no daemon, no DB.
-- Id = `YYYYMMDD-HHMMSS.mmm-<from>-<rand4>` (UTC). Lexicographic order ==
-  chronological; rand suffix removes same-millisecond collisions.
-- Frontmatter is strict (`from`, `at`, optional `re`); unknown keys are
-  `error.BadMessage`, surfaced as a fatal naming the file.
-- Each agent exclusively owns its `cursors/<agent>/<chan>` files; `unread`
-  shows strictly-newer messages from others.
-- `watch` is event-driven (inotify + poll), never sleep-polling; new channel
-  dirs are detected via a watch on `channels/` itself.
-- The `usage_text` in `src/main.zig` is the CLI contract; smoke tests exercise
-  the installed binary, unit tests the lib against a real tmp filesystem.
+- A message is one immutable Markdown file at
+  `.blackboard/channels/<channel>/<id>.md`; no shared file is appended.
+- Post publishes atomically: write a complete file to `.blackboard/tmp/`, then
+  rename it into the channel. Readers must not observe partial messages.
+- The UTC millisecond ID plus random suffix sorts chronologically and avoids
+  same-millisecond writer collisions.
+- Frontmatter accepts `from`, `at`, and optional `re`. Unknown keys are fatal
+  `BadMessage` errors that name the offending file.
+- Each agent owns only its `cursors/<agent>/<channel>` files. `unread` excludes
+  own messages and IDs at or below the cursor; `watch` never advances it.
+- `watch` must remain event-driven. Its macOS FSEvents stream wakes scans of
+  the opened board and detects newly created channels. Preserve the held
+  board and registered channel inode behavior across moves and replacements.
+- CLI output and errors are the contract. Preserve behavior against the
+  differential suite, especially atomic post, cursor state and watch timing.
 
-## Build
+## Workflow
 
-```
-zig build test                                       run tests
-zig build                                            debug binary in zig-out/bin/
-zig build -Doptimize=ReleaseFast --prefix ~/.local   install ~/.local/bin/bb
-```
-
-## Conventions
-
-- Zig 0.16 — read `~/.agents/docs/zig.md` BEFORE writing any Zig; 0.16 std
-  (std.Io.File/Dir, io threading, process.Init main) differs sharply from
-  older releases and from model priors.
-- std only; no dependencies.
-- Errors propagate (`try`) or become a fatal user-facing message at the CLI
-  boundary; no swallowing.
-- Short names (chan, msg, fm, wd); tests live beside the code in
-  `src/blackboard.zig`.
+- Read the Habu release documentation before editing `main.f`. Use the pinned
+  `c53b4d2c` compiler; `build.sh` checks its SHA-256. Do not modify or vendor
+  the compiler into this repository.
+- Build: `sh build.sh`; output is `bin/bb` (ignored).
+- Full macOS differential test: `sh tests/build-reference.sh`, then
+  `python3 tests/differential.py .build/bb-zig-reference bin/bb`. This compares
+  the complete CLI with the preserved Zig reference; run it after CLI changes.
+- Generated binaries, test boards, and caches belong in ignored `.build/` or
+  `bin/`. Commit source, tests, and concise evidence only.
+- `CLAUDE.md` is a symlink to this file; keep the link intact.
