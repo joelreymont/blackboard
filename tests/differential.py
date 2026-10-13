@@ -31,10 +31,21 @@ def fixture(root):
     return board
 
 
-def execute(binary, root, args, input_bytes=None, env_extra=None, subdir=None):
+def fixture_env(root, *, discovery=False):
     env = dict(os.environ)
-    env.pop('BB_ROOT', None)
     env.pop('BB_AGENT', None)
+    home = root / 'home'
+    home.mkdir(parents=True, exist_ok=True)
+    env['HOME'] = str(home)
+    env['BB_ROOT'] = str(root)
+    if discovery:
+        env.pop('BB_ROOT')
+    return env
+
+
+def execute(binary, root, args, input_bytes=None, env_extra=None, subdir=None):
+    # Only dedicated nested-cwd cases exercise upward discovery.
+    env = fixture_env(root, discovery=subdir is not None)
     env.update(env_extra or {})
     cwd = root / subdir if subdir else root
     cwd.mkdir(parents=True, exist_ok=True)
@@ -44,7 +55,7 @@ def execute(binary, root, args, input_bytes=None, env_extra=None, subdir=None):
 
 
 def cursors(board):
-    return {str(p.relative_to(board)): p.read_text()
+    return {str(p.relative_to(board)): p.read_bytes()
             for p in sorted((board / 'cursors').rglob('*')) if p.is_file()}
 
 
@@ -71,21 +82,64 @@ def run_pair(zig, habu):
         print(('PASS ' if okay else 'FAIL ') + name)
 
     def case(name, args, *, change=None, env_extra=None, subdir=None, expected_rc=0,
-             stderr_exact=True):
+             stderr_exact=True, acknowledged_sets=False, habu_stderr=None,
+             legacy_replay=False, failed_ack=False):
         outputs = []
+        initial_states = []
         for language, binary in [('zig', zig), ('habu', habu)]:
             root = run_dir / name / language
             board = fixture(root)
             if change:
                 change(board)
+            initial_states.append(board_state(board))
             extras = {k: (str(root) if v == '<root>' else v)
                       for k, v in (env_extra or {}).items()}
             out = execute(binary, root, args, env_extra=extras, subdir=subdir)
             outputs.append((*out, cursors(board), board_state(board)))
         z, h = outputs
-        okay = z[0] == h[0] == expected_rc and z[1] == h[1] and z[3] == h[3] and z[4] == h[4]
+        state_okay = True
+        h_cursors, h_state = dict(h[3]), dict(h[4])
+        if acknowledged_sets:
+            # Allow only exact expected v2 replacements of the cursors Zig wrote.
+            # Other files, cursor paths, stderr, status and output remain strict.
+            board = run_dir / name / 'habu' / '.blackboard'
+            for path, old_bytes in z[3].items():
+                channel = board / 'channels' / Path(path).name
+                ids = sorted(os.fsencode(p.name[:-3]) for p in channel.iterdir()
+                             if p.name.endswith('.md') and p.is_file() and not p.is_symlink())
+                expected = b'\0bb-cursor-v2\0' + b''.join(ident + b'\0' for ident in ids)
+                state_okay &= bool(ids) and old_bytes == ids[-1] and h_cursors.get(path) == expected
+                if h_cursors.get(path) == expected:
+                    h_cursors[path] = old_bytes
+                    h_state[path] = z[4][path]
+        output_okay = z[1] == h[1]
+        if legacy_replay:
+            def expected_unread(days):
+                return ''.join(
+                    f'── claude  #general  2026-07-{day:02}T12:00:00.000Z  '
+                    f'id:202607{day:02}-120000.000-claude-{day:04x}\n'
+                    f'message {day}\nsecond line\n\n'
+                    for day in days if day % 3 and day != 25)
+            output_okay = (z[1] == expected_unread(range(21, 26)) and
+                           h[1] == expected_unread(day for day in range(1, 26) if day != 20))
+        matching_state = z[3] == h_cursors and z[4] == h_state
+        if failed_ack:
+            # The old CLI acknowledges alpha, then aborts on general without
+            # printing anything. The corrected CLI must leave all receipts alone.
+            path = 'cursors/reader/alpha'
+            ident = b'20260702-130000.000-claude-00ff'
+            expected_old_state = dict(initial_states[0])
+            expected_old_state['cursors/reader'] = 'dir'
+            expected_old_state[path] = hashlib.sha256(ident).hexdigest()
+            matching_state = (z[3] == {path: ident} and z[4] == expected_old_state
+                              and h[3] == {} and h[4] == initial_states[1])
+        okay = (z[0] == h[0] == expected_rc and output_okay and state_okay and matching_state)
         if stderr_exact:
-            okay = okay and z[2] == h[2]
+            if habu_stderr is None:
+                okay = okay and z[2] == h[2]
+            else:
+                okay = (okay and z[2] == 'bb: malformed message file in .blackboard/channels/\n'
+                        and h[2] == habu_stderr)
         else:
             okay = okay and bool(z[2]) == bool(h[2])
         record(name, okay, {'zig': z, 'habu': h} if not okay else {'rc': z[0]})
@@ -106,7 +160,7 @@ def run_pair(zig, habu):
     case('channels-ignore-nondirs', ['channels'], change=special_entries)
     case('log-ignore-symlink', ['log', '--all'], change=special_entries)
     case('unread-ignore-nondirs', ['unread', '-f', 'codex'], change=special_entries)
-    case('ack-ignore-nondirs', ['ack', '-f', 'codex'], change=special_entries)
+    case('ack-ignore-nondirs', ['ack', '-f', 'codex'], change=special_entries, acknowledged_sets=True)
 
     def unicode_channel(board):
         (board / 'channels' / ('é' * 200)).mkdir()
@@ -126,7 +180,7 @@ def run_pair(zig, habu):
 
     case('filename-id-order', ['log', '-c', 'empty', '--all'], change=prefix_ids)
     case('filename-id-last', ['log', '-c', 'empty', '-n', '1'], change=prefix_ids)
-    case('filename-id-ack', ['ack', '-f', 'reader', '-c', 'empty'], change=prefix_ids)
+    case('filename-id-ack', ['ack', '-f', 'reader', '-c', 'empty'], change=prefix_ids, acknowledged_sets=True)
     case('log-default', ['log'])
     case('log-all', ['log', '--all'])
     case('log-last3', ['log', '-n', '3'])
@@ -284,10 +338,10 @@ def run_pair(zig, habu):
     case('unread-all', ['unread', '-f', 'codex'])
     case('unread-filter', ['unread', '-f', 'codex', '-c', 'alpha'])
     case('identity-env', ['unread', '-c', 'alpha'], env_extra={'BB_AGENT': 'codex'})
-    case('unread-ack', ['unread', '-f', 'codex', '--ack'])
-    case('unread-ack-filter', ['unread', '-f', 'codex', '-c', 'general', '--ack'])
-    case('ack', ['ack', '-f', 'codex'])
-    case('ack-filter', ['ack', '-f', 'codex', '-c', 'general'])
+    case('unread-ack', ['unread', '-f', 'codex', '--ack'], acknowledged_sets=True)
+    case('unread-ack-filter', ['unread', '-f', 'codex', '-c', 'general', '--ack'], acknowledged_sets=True)
+    case('ack', ['ack', '-f', 'codex'], acknowledged_sets=True)
+    case('ack-filter', ['ack', '-f', 'codex', '-c', 'general'], acknowledged_sets=True)
 
     def missing_channels(board):
         for path in (board / 'channels').rglob('*'):
@@ -330,7 +384,8 @@ def run_pair(zig, habu):
         p.parent.mkdir(parents=True)
         p.write_text('20260720-120000.000-claude-0014\n')
 
-    case('unread-existing-cursor', ['unread', '-f', 'codex', '-c', 'general'], change=with_cursor)
+    case('unread-existing-cursor', ['unread', '-f', 'codex', '-c', 'general'],
+         change=with_cursor, legacy_replay=True)
 
     def unreadable_cursor():
         outputs = []
@@ -389,10 +444,14 @@ def run_pair(zig, habu):
         (board / 'channels/general/20260725-120000.000-codex-0019.md').write_text('broken\n')
 
     case('log-late-malformed-no-stdout', ['log', '--all'], change=late_bad, expected_rc=1)
-    case('unread-late-malformed-no-stdout', ['unread', '-f', 'reader', '--ack'], change=late_bad, expected_rc=1)
+    case('unread-late-malformed-no-stdout', ['unread', '-f', 'reader', '--ack'],
+         change=late_bad, expected_rc=1, failed_ack=True,
+         habu_stderr='bb: malformed message file: channels/general/20260725-120000.000-codex-0019.md\n')
 
     def oversized_message(board):
-        (board / 'channels/alpha/20260702-130000.000-claude-00ff.md').write_bytes(b'x' * (1 << 20) + b'x')
+        # Exceed the serialized bound, which now accommodates a full-size body
+        # plus valid frontmatter; successful-post readability has its own gate.
+        (board / 'channels/alpha/20260702-130000.000-claude-00ff.md').write_bytes(b'x' * 1049001)
 
     case('complete-message-limit', ['log', '-c', 'alpha'], change=oversized_message, expected_rc=1)
 
@@ -497,7 +556,7 @@ def run_pair(zig, habu):
         readonly.touch()
         fd = os.open(readonly, os.O_RDONLY)
         try:
-            p = subprocess.run([str(binary), 'channels'], cwd=root, stdout=fd,
+            p = subprocess.run([str(binary), 'channels'], cwd=root, env=fixture_env(root), stdout=fd,
                                stderr=subprocess.PIPE, timeout=15)
         finally:
             os.close(fd)
@@ -536,7 +595,7 @@ def run_pair(zig, habu):
             if ack:
                 args += ['--ack']
             start = time.monotonic()
-            proc = subprocess.Popen(args, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(args, cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             blocked = True
             if not immediate and not timeout:
                 time.sleep(.15)
@@ -554,7 +613,13 @@ def run_pair(zig, habu):
             outputs.append((proc.returncode, out, err, board_state(board), blocked, elapsed))
         z, h = outputs
         expected_rc = 2 if timeout else 1 if malformed else 0
-        okay = (z[:5] == h[:5] and z[0] == expected_rc and
+        compare_h = h
+        diagnostic_okay = True
+        if malformed:
+            diagnostic_okay = (z[2] == b'error: BadMessage\n' and
+                h[2] == b'bb: malformed message file: channels/general/20261012-120000.000-writer-1234.md\n')
+            compare_h = (*h[:2], z[2], *h[3:])
+        okay = (z[:5] == compare_h[:5] and diagnostic_okay and z[0] == expected_rc and
                 (not timeout or z[5] >= .8 and h[5] >= .8) and
                 (immediate or timeout or z[4] and h[4]))
         record(name, okay, {'zig': z, 'habu': h} if not okay else
@@ -584,7 +649,7 @@ def run_pair(zig, habu):
             cursor.parent.mkdir()
             cursor.write_text('a\n')
             proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-t', '2'],
-                                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             time.sleep(.15)
             waiting = proc.poll() is None
             retired = (root if outside_board else board / 'tmp') / 'retired'
@@ -615,7 +680,7 @@ def run_pair(zig, habu):
             assert execute(binary, root, ['init'])[0] == 0
             start = time.monotonic()
             proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-t', '1'],
-                                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             time.sleep(.15)
             waiting = proc.poll() is None
             for i in range(5):
@@ -647,7 +712,7 @@ def run_pair(zig, habu):
             else:
                 message.write_text('---\nfrom: reader\nat: now\n---\n\nmessage\n')
             proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-c', 'general', '-t', '1'],
-                                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             time.sleep(.15)
             waiting = proc.poll() is None
             if label == 'cursor-reset':
@@ -674,7 +739,7 @@ def run_pair(zig, habu):
                 cursor.parent.mkdir()
                 cursor.write_text('a\n')
             proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-c', 'general', '-t', '2'],
-                                    cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             time.sleep(.15)
             waiting = proc.poll() is None
             if label == 'hardlink-new-name':
@@ -701,7 +766,7 @@ def run_pair(zig, habu):
         assert execute(binary, root, ['init'])[0] == 0
         board = root / '.blackboard'
         proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-c', 'general', '-t', '2'],
-                                cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(.15)
         waiting = proc.poll() is None
         old = board / 'channels/general'
@@ -725,7 +790,7 @@ def run_pair(zig, habu):
         root.mkdir(parents=True)
         assert execute(binary, root, ['init'])[0] == 0
         proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-t', '2'],
-                                cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(.15)
         waiting = proc.poll() is None
         post = execute(binary, root, ['post', '-f', 'writer', 'concurrent body'])
@@ -742,7 +807,7 @@ def run_pair(zig, habu):
         assert execute(binary, root, ['init'])[0] == 0
         original = root / '.blackboard'
         proc = subprocess.Popen([str(binary), 'watch', '-f', 'reader', '-t', '2'],
-                                cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                cwd=root, env=fixture_env(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(.15)
         waiting = proc.poll() is None
         moved_parent = run_dir / 'watch-root-replaced' / (language + '-moved-parent')
@@ -773,7 +838,7 @@ def run_pair(zig, habu):
         def low_fd_limit():
             resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
 
-        p = subprocess.run([str(binary), 'watch', '-f', 'reader', '-t', '1'], cwd=root,
+        p = subprocess.run([str(binary), 'watch', '-f', 'reader', '-t', '1'], cwd=root, env=fixture_env(root),
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                            preexec_fn=low_fd_limit, timeout=4)
         outputs.append((p.returncode, p.stdout, p.stderr))

@@ -35,9 +35,31 @@ variable OUT-CAP
 variable OUT-U
 DYNAMIC-BUFFER ERR-BUF u8
 variable ERR-U
-create CUR-DATA 256 allot
-create CUR-PROBE 1 allot
-variable CUR-READ-U
+DYNAMIC-BUFFER CUR-RAW u8
+variable CUR-RAW-U
+PTR-VARIABLE CUR-PREV-A
+variable CUR-PREV-U
+DYNAMIC-BUFFER ACK-IDS u8
+variable ACK-IDS-U
+DYNAMIC-BUFFER ACK-RECS n
+variable ACK-COUNT
+DYNAMIC-BUFFER PEND-IDS u8
+variable PEND-IDS-U
+DYNAMIC-BUFFER PEND-RECS n
+variable PEND-COUNT
+DYNAMIC-BUFFER PEND-CHANS u8
+variable PEND-CHANS-U
+DYNAMIC-BUFFER PEND-GROUPS n
+variable PEND-GROUP-COUNT
+create CUR-TEMP-BUF FS-PATH-CAP allot
+variable CUR-TEMP-U
+create CUR-MAGIC 0 c, 98 c, 98 c, 45 c, 99 c, 117 c, 114 c,
+   115 c, 111 c, 114 c, 45 c, 118 c, 50 c, 0 c,
+14 constant CUR-MAGIC-U
+$100 constant CUR-O-NOFOLLOW
+$4 constant CUR-O-NONBLOCK
+$800 constant CUR-O-EXCL
+$100000 constant CUR-O-DIRECTORY
 create CONTENT-BUF CONTENT-CAP allot
 variable CONTENT-U
 create BODY-BUF MAX-MSG 1+ allot
@@ -90,10 +112,6 @@ PTR-VARIABLE ACTIVE-CHAN-A
 variable ACTIVE-CHAN-U
 PTR-VARIABLE ACTIVE-WHO-A
 variable ACTIVE-WHO-U
-PTR-VARIABLE LAST-ID-A
-variable LAST-ID-U
-PTR-VARIABLE CUR-ID-A
-variable CUR-ID-U
 variable SEEN-N
 variable SKIP-N
 variable RENDER-N
@@ -143,7 +161,13 @@ FUNCTION: MKDIR-CALL mkdir ( ptr u8 n -- i32 ) ;FUNCTION
 FUNCTION: STAT-CALL stat ( ptr u8 ptr u8 -- i32 )
    1 256 WRITES-BYTES
 ;FUNCTION
+FUNCTION: LSTAT-CALL lstat ( ptr u8 ptr u8 -- i32 )
+   1 256 WRITES-BYTES
+;FUNCTION
+FUNCTION: RENAME-CALL rename ( ptr u8 ptr u8 -- i32 ) ;FUNCTION
 FUNCTION: OPEN-CALL open ( ptr u8 n n -- i32 ) 2 VARIADIC ;FUNCTION
+FUNCTION: FLOCK-CALL flock ( n n -- i32 ) ;FUNCTION
+FUNCTION: CLOSE-CALL close ( n -- i32 ) ;FUNCTION
 
 LIBRARY /System/Library/Frameworks/CoreServices.framework/CoreServices
 FUNCTION: CF-STRING-CALL CFStringCreateWithCString ( ptr u8 ptr u8 n -- n ) ;FUNCTION
@@ -198,6 +222,18 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
 : NAME-TOO-LONG ( -- ) s" error: NameTooLong" ERROR-LINE 1 EXIT-CALL ;
 : ACCESS-DENIED ( -- ) s" error: AccessDenied" ERROR-LINE 1 EXIT-CALL ;
 : SYMLINK-LOOP ( -- ) s" error: SymLinkLoop" ERROR-LINE 1 EXIT-CALL ;
+: READ-FAILED ( -- ) s" error: ReadFailed" ERROR-LINE 1 EXIT-CALL ;
+
+: FS-ERROR ( n ptr u8 n -- )
+   {: code:n fallback:ptr size:n :}
+   code 0= if exit then
+   FFI:ERRNO {: err:n :}
+   err 13 = if ACCESS-DENIED then
+   err 20 = if NOT-DIR then
+   err 21 = if IS-DIR then
+   err 2 = if FILE-NOT-FOUND then
+   err 62 = if SYMLINK-LOOP then
+   fallback size ERROR-LINE 1 EXIT-CALL ;
 
 : OUT-RESET ( -- ) 0 OUT-U ! ;
 : OUT-NEED ( n -- )
@@ -249,6 +285,8 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
 : FILE$ ( -- ptr u8 n ) FILE-BUF FILE-U @ ;
 : TEMP$ ( -- ptr u8 n ) TEMP-BUF TEMP-U @ ;
 : CURSOR$ ( -- ptr u8 n ) CURSOR-BUF CURSOR-U @ ;
+: BAD-CURSOR ( -- )
+   ERROR-BEGIN s" malformed cursor file: " ERR-ADD CURSOR$ ERR-ADD ERROR-END ;
 : ID$ ( -- ptr u8 n ) ID-BUF ID-U @ ;
 : AT$ ( -- ptr u8 n ) AT-BUF AT-U @ ;
 
@@ -431,7 +469,11 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    path size FS-PATHZ 493 MKDIR-CALL 0= if exit then
    FFI:ERRNO {: err:n :}
    err 17 = if
-      path size DIR? if exit then
+      path size FS-PATHZ WATCH-STAT LSTAT-CALL 0= if
+         WATCH-STAT 4 + FS-U16@ S-IFMT and S-IFDIR = if exit then
+      else
+         FFI:ERRNO 13 = if ACCESS-DENIED then
+      then
       NOT-DIR
    then
    err 20 = if NOT-DIR then
@@ -570,7 +612,9 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
       got 0= if BODY-BUF swap exit then
       got +
    repeat
-   0 BODY-BUF MAX-MSG + 1 read 0 > if s" message exceeds 1048576 bytes" FAIL then
+   0 BODY-BUF MAX-MSG + 1 read {: extra:n :}
+   extra 0 < if READ-FAILED then
+   extra 0 > if s" message exceeds 1048576 bytes" FAIL then
    BODY-BUF swap ;
 
 : POST-RAW-BODY$ ( -- ptr u8 n )
@@ -589,6 +633,24 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    then
    10 CONTENT-C s" ---" CONTENT-ADD 10 CONTENT-C 10 CONTENT-C
    body bodyu CONTENT-ADD 10 CONTENT-C ;
+
+: POST-WRITE ( -- )
+   TEMP$ FS-PATHZ FS-O-WRONLY FS-O-CREAT or FS-O-TRUNC or
+   FS-MODE-0644 OPEN-CALL {: fd:n :}
+   fd 0 < if 1 s" error: WriteFailed" FS-ERROR then
+   0 begin dup CONTENT-U @ < while
+      {: off:n :}
+      fd CONTENT-BUF off + CONTENT-U @ off - write {: got:n :}
+      got 0 <= if fd close WRITE-FAILED then
+      off got +
+   repeat drop
+   fd CLOSE-CALL 0<> if WRITE-FAILED then ;
+
+: POST-RENAME ( -- )
+   0 FILE-BUF FILE-U @ + c!
+   TEMP$ FS-PATHZ FILE-BUF RENAME-CALL 0<> if
+      1 s" error: RenameFailed" FS-ERROR
+   then ;
 
 : POST ( -- )
    IDENTITY$ {: from:ptr fromu:n :}
@@ -616,8 +678,8 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    ROOT$ s" tmp" TEMP-BUF TEMP-U JOIN-INTO
    TEMP$ MAKE-DIRS-CHECKED
    TEMP$ name nameu TEMP-BUF TEMP-U JOIN-INTO
-   TEMP$ CONTENT-BUF CONTENT-U @ WRITE-ALL
-   TEMP$ FILE$ RENAME-FILE
+   POST-WRITE
+   POST-RENAME
    OUT-RESET ID$ OUT-ADD OUT-LF OUT-FLUSH ;
 
 : REC$ ( ptr u8 ptr n n -- ptr u8 n )
@@ -678,16 +740,31 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    1 CHANS-BUF-RESERVE
    1 CHANS-RECS-RESERVE
    CHAN$ DIR-STATE 0= if FILE-NOT-FOUND then
-   CHAN$ [: ADD-CHANNEL-NAME ;] FS-LIST:EACH
+   CHAN$ FS-PATHZ CUR-O-DIRECTORY 0 OPEN-CALL {: fd:n :}
+   fd 0 < if 1 s" error: ReadFailed" FS-ERROR then
+   fd close
+   [: CHAN$ [: ADD-CHANNEL-NAME ;] FS-LIST:EACH ;] catch
+   0<> if READ-FAILED then
    0 CHANS-BUF 0 CHANS-RECS CHANS-U @ SORT-RECS ;
+
+: PATH-KIND ( ptr u8 n -- n )
+   {: path:ptr size:n :}
+   path size FS-PATHZ WATCH-STAT LSTAT-CALL 0= if
+      WATCH-STAT 4 + FS-U16@ S-IFMT and exit
+   then
+   FFI:ERRNO {: err:n :}
+   err 2 = if 0 exit then
+   err 13 = if ACCESS-DENIED then
+   err 20 = if NOT-DIR then
+   err 62 = if SYMLINK-LOOP then
+   s" error: StatFailed" ERROR-LINE 1 EXIT-CALL 0 ;
 
 : MSG-ENTRY? ( ptr u8 n -- bool )
    {: name:ptr nameu:n :}
    nameu 3 < if BB-FALSE exit then
    name nameu s" .md" ENDS-WITH? 0= if BB-FALSE exit then
    CHAN$ name nameu FILE-BUF FILE-U JOIN-INTO
-   FILE$ SYMLINK? if BB-FALSE exit then
-   FILE$ FILE? ;
+   FILE$ PATH-KIND S-IFREG = ;
 
 : ADD-MESSAGE-NAME ( ptr u8 n -- )
    {: name:ptr u:n :}
@@ -714,21 +791,21 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    0 LIST-U ! 0 LIST-BYTES !
    1 LIST-BUF-RESERVE
    1 LIST-RECS-RESERVE
-   CHAN$ [: ADD-MESSAGE-NAME ;] FS-LIST:EACH
+   CHAN$ FS-PATHZ CUR-O-DIRECTORY 0 OPEN-CALL {: fd:n :}
+   fd 0 < if 1 s" error: ReadFailed" FS-ERROR then
+   fd close
+   [: CHAN$ [: ADD-MESSAGE-NAME ;] FS-LIST:EACH ;] catch
+   0<> if READ-FAILED then
    0 LIST-BUF 0 LIST-RECS LIST-U @ SORT-RECS ;
 
 : SET-ACTIVE-CHAN ( ptr u8 n -- )
    ACTIVE-CHAN-U ! ACTIVE-CHAN-A ! ;
 
 : MALFORMED ( -- )
-   CMD-A @ CMD-U @ s" log" STR= if
-      ERROR-BEGIN s" malformed message file: channels/" ERR-ADD
-      ACTIVE-CHAN-A @ ACTIVE-CHAN-U @ ERR-ADD
-      s" /" ERR-ADD MSG-ID-A @ MSG-ID-U @ ERR-ADD
-      s" .md" ERR-ADD ERROR-END
-   then
-   CMD-A @ CMD-U @ s" watch" STR= if s" error: BadMessage" ERROR-LINE 1 EXIT-CALL then
-   s" malformed message file in .blackboard/channels/" FAIL ;
+   ERROR-BEGIN s" malformed message file: channels/" ERR-ADD
+   ACTIVE-CHAN-A @ ACTIVE-CHAN-U @ ERR-ADD
+   s" /" ERR-ADD MSG-ID-A @ MSG-ID-U @ ERR-ADD
+   s" .md" ERR-ADD ERROR-END ;
 
 : LINE-FIELD ( ptr u8 n -- ) {: line:ptr lu:n :}
    line lu s" from: " STARTS-WITH? if
@@ -776,10 +853,21 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    id MSG-ID-A ! idu MSG-ID-U !
    id idu MAKE-NAME {: name:ptr nameu:n :}
    CHAN$ name nameu FILE-BUF FILE-U JOIN-INTO
-   FILE$ FILE-SIZE MAX-MSG > if STREAM-TOO-LONG then
-   [: FILE$ CONTENT-BUF MAX-MSG READ-ALL CONTENT-U ! ;] catch {: code:n :}
-   code E-FS-CAPACITY = if STREAM-TOO-LONG then
-   code 0<> if code throw then
+   FILE$ FS-PATHZ 0 0 OPEN-CALL {: fd:n :}
+   fd 0 < if 1 s" error: ReadFailed" FS-ERROR then
+   fd WATCH-STAT FSTAT-CALL 0<> if fd close READ-FAILED then
+   WATCH-STAT 4 + FS-U16@ S-IFMT and S-IFDIR = if fd close IS-DIR then
+   0 CONTENT-U !
+   begin CONTENT-U @ CONTENT-CAP 1- < while
+      fd CONTENT-BUF CONTENT-U @ + CONTENT-CAP 1- CONTENT-U @ - read {: got:n :}
+      got 0 < if fd close READ-FAILED then
+      got 0= if fd close CONTENT-BUF CONTENT-U @ PARSE-MESSAGE exit then
+      got CONTENT-U +!
+   repeat
+   fd BODY-BUF 1 read {: extra:n :}
+   fd close
+   extra 0 < if READ-FAILED then
+   extra 0 > if STREAM-TOO-LONG then
    CONTENT-BUF CONTENT-U @ PARSE-MESSAGE ;
 
 : RENDER-PLAIN ( -- )
@@ -867,8 +955,7 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
 : PRINT-CHANNEL ( ptr u8 n -- ) {: name:ptr nameu:n :}
    ROOT$ s" channels" CHAN-BUF CHAN-U JOIN-INTO
    CHAN$ name nameu FILE-BUF FILE-U JOIN-INTO
-   FILE$ SYMLINK? if exit then
-   FILE$ DIR? if name nameu OUT-ADD OUT-LF then ;
+   FILE$ PATH-KIND S-IFDIR = if name nameu OUT-ADD OUT-LF then ;
 
 : CHANNELS ( -- )
    CHANNELS-LIST
@@ -876,74 +963,214 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    0 CHANS-BUF 0 CHANS-RECS CHANS-U @ [: PRINT-CHANNEL ;] EACH-REC
    OUT-FLUSH ;
 
+: CUR-TEMP$ ( -- ptr u8 n ) CUR-TEMP-BUF CUR-TEMP-U @ ;
+
+: CUR-V2? ( -- bool )
+   CUR-RAW-U @ 0 > if 0 CUR-RAW c@ 0= else BB-FALSE then ;
+
+: CUR-ID$ ( n -- ptr u8 n n )
+   {: off:n :}
+   off begin dup CUR-RAW-U @ < while
+      0 CUR-RAW over + c@ 0= if
+         {: stop:n :}
+         0 CUR-RAW off + stop off - stop 1+ exit
+      then
+      1+
+   repeat
+   BAD-CURSOR ;
+
+: CHECK-CURSOR ( -- )
+   CUR-V2? if
+      CUR-RAW-U @ CUR-MAGIC-U < if BAD-CURSOR then
+      0 CUR-RAW CUR-MAGIC-U CUR-MAGIC CUR-MAGIC-U STR= 0= if BAD-CURSOR then
+      NULL-PTR CUR-PREV-A ! 0 CUR-PREV-U !
+      CUR-MAGIC-U begin dup CUR-RAW-U @ < while
+         CUR-ID$ {: id:ptr idu:n next:n :}
+         CUR-PREV-A @ NULL-PTR <> if
+            CUR-PREV-A @ CUR-PREV-U @ id idu BYTE-LESS? 0= if BAD-CURSOR then
+         then
+         id CUR-PREV-A ! idu CUR-PREV-U !
+         next
+      repeat drop
+   else
+      CUR-RAW-U @ 256 >= if STREAM-TOO-LONG then
+      CUR-RAW-U @ 0 ?do
+         0 CUR-RAW i + c@ 0= if BAD-CURSOR then
+      loop
+   then ;
+
 : READ-CURSOR ( -- )
-   NULL-PTR CUR-ID-A ! 0 CUR-ID-U !
+   0 CUR-RAW-U !
    ACTIVE-WHO-A @ ACTIVE-WHO-U @ ACTIVE-CHAN-A @ ACTIVE-CHAN-U @ MAKE-CURSOR-PATH
-   CURSOR$ FS-PATHZ 0 0 OPEN-CALL {: fd:n :}
+   CURSOR$ FS-PATHZ CUR-O-NOFOLLOW CUR-O-NONBLOCK or 0 OPEN-CALL {: fd:n :}
    fd 0 < if
       FFI:ERRNO {: err:n :}
       err 2 = if exit then
       err 13 = if ACCESS-DENIED then
       err 20 = if NOT-DIR then
       err 62 = if SYMLINK-LOOP then
-      E-FS-OPEN throw
+      s" error: ReadFailed" ERROR-LINE 1 EXIT-CALL
    then
-   fd WATCH-STAT FSTAT-CALL 0<> if fd close E-FS-STAT throw then
+   fd WATCH-STAT FSTAT-CALL 0<> if fd close READ-FAILED then
    WATCH-STAT 4 + FS-U16@ S-IFMT and S-IFDIR = if fd close IS-DIR then
-   0 CUR-READ-U !
-   begin CUR-READ-U @ 256 < while
-      fd CUR-DATA CUR-READ-U @ + 256 CUR-READ-U @ - read {: got:n :}
-      got 0 < if fd close E-FS-IO throw then
-      got 0= if
-         fd close
-         CUR-DATA CUR-READ-U @ TRIM-END-LF CUR-ID-U !
-         CUR-DATA CUR-ID-A ! exit
-      then
-      got CUR-READ-U +!
-   repeat
-   fd CUR-PROBE 1 read {: extra:n :}
-   fd close
-   extra 0 < if E-FS-IO throw then
-   extra 0 > if STREAM-TOO-LONG then
-   CUR-DATA CUR-READ-U @ TRIM-END-LF CUR-ID-U !
-   CUR-DATA CUR-ID-A ! ;
+   WATCH-STAT 4 + FS-U16@ S-IFMT and S-IFREG <> if fd close BAD-CURSOR then
+   begin
+      CUR-RAW-U @ 4096 + CUR-RAW-RESERVE
+      fd 0 CUR-RAW CUR-RAW-U @ + 4096 read {: got:n :}
+      got 0 < if fd close READ-FAILED then
+      got 0= if fd close CHECK-CURSOR exit then
+      got CUR-RAW-U +!
+   again ;
 
-: WRITE-CURSOR ( -- )
-   LAST-ID-A @ NULL-PTR = if exit then
-   ACTIVE-WHO-A @ ACTIVE-WHO-U @ MAKE-CURSOR-DIR
-   ACTIVE-WHO-A @ ACTIVE-WHO-U @ ACTIVE-CHAN-A @ ACTIVE-CHAN-U @ MAKE-CURSOR-PATH
-   CURSOR$ FS-PATHZ FS-O-WRONLY FS-O-CREAT or FS-O-TRUNC or
-   FS-MODE-0644 OPEN-CALL {: fd:n :}
-   fd 0 < if
-      FFI:ERRNO {: err:n :}
-      err 21 = if IS-DIR then
-      err 20 = if NOT-DIR then
-      err 13 = if ACCESS-DENIED then
-      err 62 = if SYMLINK-LOOP then
-      E-FS-OPEN throw
+: CUR-MEMBER? ( ptr u8 n -- bool )
+   {: id:ptr idu:n :}
+   CUR-V2? if
+      CUR-MAGIC-U begin dup CUR-RAW-U @ < while
+         CUR-ID$ {: cur:ptr size:n next:n :}
+         id idu cur size STR= if BB-TRUE exit then
+         next
+      repeat drop BB-FALSE exit
    then
-   0 begin dup LAST-ID-U @ < while
-      {: off:n :}
-      fd LAST-ID-A @ off + LAST-ID-U @ off - write {: got:n :}
-      got 0 <= if fd close E-FS-IO throw then
-      off got +
-   repeat drop
-   fd close ;
+   CUR-RAW-U @ 0= if BB-FALSE exit then
+   0 CUR-RAW {: data:ptr :}
+   id idu data data CUR-RAW-U @ TRIM-END-LF STR= ;
 
-: SET-LAST-ID ( ptr u8 n -- )
-   LAST-ID-U ! LAST-ID-A ! ;
+: ACK-REC$ ( n -- ptr u8 n )
+   0 ACK-IDS 0 ACK-RECS rot REC$ ;
+
+: ACK-MEMBER? ( ptr u8 n -- bool )
+   {: id:ptr idu:n :}
+   ACK-COUNT @ 0 ?do
+      i ACK-REC$ id idu STR= if BB-TRUE unloop exit then
+   loop BB-FALSE ;
+
+: ACK-ADD ( ptr u8 n -- )
+   {: id:ptr idu:n :}
+   id idu ACK-MEMBER? if exit then
+   ACK-IDS-U @ idu + ACK-IDS-RESERVE
+   id 0 ACK-IDS ACK-IDS-U @ + idu BYTE-COPY
+   ACK-COUNT @ 1+ 2 * ACK-RECS-RESERVE
+   ACK-IDS-U @ ACK-COUNT @ 2 * ACK-RECS !
+   idu ACK-COUNT @ 2 * 1+ ACK-RECS !
+   idu ACK-IDS-U +! 1 ACK-COUNT +! ;
+
+: ACK-OLD ( -- )
+   CUR-V2? if
+      CUR-MAGIC-U begin dup CUR-RAW-U @ < while
+         CUR-ID$ {: cur:ptr size:n next:n :}
+         cur size ACK-ADD
+         next
+      repeat drop exit
+   then
+   CUR-RAW-U @ 0 > if
+      0 CUR-RAW {: data:ptr :}
+      data data CUR-RAW-U @ TRIM-END-LF ACK-ADD
+   then ;
+
+: CUR-TEMP-NAME ( -- )
+   CURSOR$ drop CURSOR-U @ ACTIVE-CHAN-U @ - CUR-TEMP-BUF CUR-TEMP-U COPY-INTO
+   CUR-TEMP-U @ 9 + FS-PATH-CAP >= if NAME-TOO-LONG then
+   s" .tmp-" drop CUR-TEMP-BUF CUR-TEMP-U @ + 5 BYTE-COPY
+   5 CUR-TEMP-U +!
+   RANDOM-U16 {: rand:n :}
+   4 0 ?do
+      rand 12 i 4 * - rshift 15 and HEX-CHAR
+      CUR-TEMP-BUF CUR-TEMP-U @ i + + c!
+   loop
+   4 CUR-TEMP-U +! ;
+
+: CUR-TEMP-OPEN ( -- n )
+   64 0 ?do
+      CUR-TEMP-NAME
+      CUR-TEMP$ FS-PATHZ
+      FS-O-WRONLY FS-O-CREAT or CUR-O-EXCL or CUR-O-NOFOLLOW or
+      FS-MODE-0644 OPEN-CALL {: fd:n :}
+      fd 0 >= if fd unloop exit then
+      FFI:ERRNO 17 <> if
+         1 s" error: WriteFailed" FS-ERROR
+      then
+   loop
+   WRITE-FAILED -1 ;
+
+: CUR-WRITE ( n ptr u8 n -- )
+   {: fd:n data:ptr size:n :}
+   0 begin dup size < while
+      {: off:n :}
+      fd data off + size off - write {: got:n :}
+      got 0 <= if
+         fd close CUR-TEMP$ FS-PATHZ unlink drop WRITE-FAILED
+      then
+      off got +
+   repeat drop ;
+
+: WRITE-CURSOR ( ptr u8 ptr n n -- )
+   {: ids:ptr recs:ptr count:n :}
+   count 0= if exit then
+   ACTIVE-WHO-A @ ACTIVE-WHO-U @ MAKE-CURSOR-DIR
+   CURSOR$ FS-PATHZ CUR-O-NOFOLLOW CUR-O-DIRECTORY or 0 OPEN-CALL {: lockfd:n :}
+   lockfd 0 < if 1 s" error: OpenFailed" FS-ERROR then
+   lockfd 2 FLOCK-CALL 0<> if lockfd close 1 s" error: LockFailed" FS-ERROR then
+   READ-CURSOR
+   0 ACK-COUNT ! 0 ACK-IDS-U !
+   1 ACK-IDS-RESERVE
+   ACK-OLD
+   ids recs count [: ACK-ADD ;] EACH-REC
+   0 ACK-IDS 0 ACK-RECS ACK-COUNT @ SORT-RECS
+   CUR-TEMP-OPEN {: fd:n :}
+   fd CUR-MAGIC CUR-MAGIC-U CUR-WRITE
+   ACK-COUNT @ 0 ?do
+      fd i ACK-REC$ CUR-WRITE
+      fd CUR-MAGIC 1 CUR-WRITE
+   loop
+   fd CLOSE-CALL 0<> if CUR-TEMP$ FS-PATHZ unlink drop WRITE-FAILED then
+   0 CURSOR-BUF CURSOR-U @ + c!
+   CUR-TEMP$ FS-PATHZ CURSOR-BUF RENAME-CALL 0<> if
+      FFI:ERRNO {: err:n :}
+      CUR-TEMP$ FS-PATHZ unlink drop
+      err 13 = if ACCESS-DENIED then
+      err 20 = if NOT-DIR then
+      err 21 = if IS-DIR then
+      s" error: RenameFailed" ERROR-LINE 1 EXIT-CALL
+   then
+   lockfd 8 FLOCK-CALL drop
+   lockfd close ;
+
+: PEND-ADD ( ptr u8 n -- )
+   {: id:ptr idu:n :}
+   PEND-IDS-U @ idu + PEND-IDS-RESERVE
+   id 0 PEND-IDS PEND-IDS-U @ + idu BYTE-COPY
+   PEND-COUNT @ 1+ 2 * PEND-RECS-RESERVE
+   PEND-IDS-U @ PEND-COUNT @ 2 * PEND-RECS !
+   idu PEND-COUNT @ 2 * 1+ PEND-RECS !
+   idu PEND-IDS-U +! 1 PEND-COUNT +! ;
+
+: PEND-CAPTURE ( -- )
+   ACTIVE-CHAN-U @ {: chanu:n :}
+   PEND-CHANS-U @ chanu + PEND-CHANS-RESERVE
+   ACTIVE-CHAN-A @ 0 PEND-CHANS PEND-CHANS-U @ + chanu BYTE-COPY
+   PEND-GROUP-COUNT @ 1+ 4 * PEND-GROUPS-RESERVE
+   PEND-CHANS-U @ PEND-GROUP-COUNT @ 4 * PEND-GROUPS !
+   chanu PEND-GROUP-COUNT @ 4 * 1+ PEND-GROUPS !
+   PEND-COUNT @ PEND-GROUP-COUNT @ 4 * 2 + PEND-GROUPS !
+   LIST-U @ PEND-GROUP-COUNT @ 4 * 3 + PEND-GROUPS !
+   chanu PEND-CHANS-U +! 1 PEND-GROUP-COUNT +!
+   0 LIST-BUF 0 LIST-RECS LIST-U @ [: PEND-ADD ;] EACH-REC ;
+
+: PEND-COMMIT ( -- )
+   PEND-GROUP-COUNT @ 0 ?do
+      0 PEND-GROUPS i 4 * cells + @ {: chanoff:n :}
+      0 PEND-GROUPS i 4 * 1+ cells + @ {: chanu:n :}
+      0 PEND-GROUPS i 4 * 2 + cells + @ {: first:n :}
+      0 PEND-GROUPS i 4 * 3 + cells + @ {: count:n :}
+      0 PEND-CHANS chanoff + chanu SET-ACTIVE-CHAN
+      0 PEND-IDS 0 PEND-RECS first 2 * cells + count WRITE-CURSOR
+   loop ;
 
 : UNREAD-ENTRY ( ptr u8 n -- ) {: name:ptr nameu:n :}
-   name nameu SET-LAST-ID
-   CUR-ID-A @ NULL-PTR <> if
-      CUR-ID-A @ CUR-ID-U @ name nameu BYTE-LESS? 0= if exit then
-   then
+   name nameu CUR-MEMBER? if exit then
    name nameu READ-MESSAGE
    MSG-FROM-A @ MSG-FROM-U @ ACTIVE-WHO-A @ ACTIVE-WHO-U @ STR= if exit then
    RENDER-PLAIN ;
-
-: ACK-ENTRY ( ptr u8 n -- ) {: name:ptr nameu:n :}
-   name nameu SET-LAST-ID ;
 
 : COUNT-MESSAGE-ENTRY ( ptr u8 n -- )
    2drop 1 SEEN-N +! ;
@@ -954,34 +1181,32 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
 
 : UNREAD-CHANNEL ( ptr u8 n -- ) {: chan:ptr chanu:n :}
    chan chanu CHANNEL-SELECTED? 0= if exit then
-   chan chanu MAKE-CHAN-PATH CHAN$ SYMLINK? if exit then
-   CHAN$ DIR? 0= if exit then
+   chan chanu MAKE-CHAN-PATH CHAN$ PATH-KIND S-IFDIR <> if exit then
    chan chanu SET-ACTIVE-CHAN
    LIST-MESSAGES
    0 SEEN-N !
    0 LIST-BUF 0 LIST-RECS LIST-U @ [: COUNT-MESSAGE-ENTRY ;] EACH-REC
    SEEN-N @ 0= if exit then
    READ-CURSOR
-   NULL-PTR LAST-ID-A ! 0 LAST-ID-U !
    0 LIST-BUF 0 LIST-RECS LIST-U @ [: UNREAD-ENTRY ;] EACH-REC
-   ARG-ACK @ 0<> if WRITE-CURSOR then ;
+   ARG-ACK @ 0<> if PEND-CAPTURE then ;
 
 : ACK-CHANNEL ( ptr u8 n -- ) {: chan:ptr chanu:n :}
    chan chanu CHANNEL-SELECTED? 0= if exit then
-   chan chanu MAKE-CHAN-PATH CHAN$ SYMLINK? if exit then
-   CHAN$ DIR? 0= if exit then
+   chan chanu MAKE-CHAN-PATH CHAN$ PATH-KIND S-IFDIR <> if exit then
    chan chanu SET-ACTIVE-CHAN
    LIST-MESSAGES
-   NULL-PTR LAST-ID-A ! 0 LAST-ID-U !
-   0 LIST-BUF 0 LIST-RECS LIST-U @ [: ACK-ENTRY ;] EACH-REC
-   WRITE-CURSOR ;
+   0 LIST-BUF 0 LIST-RECS LIST-U @ WRITE-CURSOR ;
 
 : SCAN-UNREAD ( -- )
    OUT-RESET
+   0 PEND-GROUP-COUNT ! 0 PEND-COUNT ! 0 PEND-IDS-U ! 0 PEND-CHANS-U !
+   1 PEND-IDS-RESERVE
    IDENTITY$ ACTIVE-WHO-U ! ACTIVE-WHO-A !
    CHANNELS-LIST
    0 CHANS-BUF 0 CHANS-RECS CHANS-U @ [: UNREAD-CHANNEL ;] EACH-REC
-   OUT-FLUSH ;
+   OUT-FLUSH
+   ARG-ACK @ 0<> if PEND-COMMIT then ;
 
 : SCAN-WATCH-UNREAD ( -- )
    OUT-RESET
@@ -1055,10 +1280,14 @@ CAST: WATCH-EVENT-PTR ( n -- ptr u8 )
    name size MAKE-CHAN-PATH
    CHAN$ SYMLINK? if exit then
    CHAN$ DIR? 0= if exit then
+   CHAN$ FS-PATHZ CUR-O-DIRECTORY 0 OPEN-CALL {: fd:n :}
+   fd 0 < if 1 s" error: ReadFailed" FS-ERROR then
+   fd close
    CHAN$ WATCH-STAT-PATH? 0= if s" error: WatchAddFailed" ERROR-LINE 1 EXIT-CALL then
    WATCH-DEV@ WATCH-PARENT-DEV !
    WATCH-INO@ WATCH-PARENT-INO !
-   CHAN$ [: WATCH-REMEMBER-ENTRY ;] FS-LIST:EACH
+   [: CHAN$ [: WATCH-REMEMBER-ENTRY ;] FS-LIST:EACH ;] catch
+   0<> if READ-FAILED then
    CHAN$ WATCH-STAT-PATH? 0= if s" error: WatchAddFailed" ERROR-LINE 1 EXIT-CALL then
    WATCH-NAMES-U @ size + WATCH-NAMES-RESERVE
    name 0 WATCH-NAMES WATCH-NAMES-U @ + size BYTE-COPY

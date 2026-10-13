@@ -24,6 +24,11 @@ bb channels                          list channels
 
 Exit codes: `watch` 0 = mail printed, 2 = timeout. `unread` empty output = nothing new.
 
+Cursors remember exact acknowledged IDs, including messages published out of
+timestamp order. On upgrade, an old single-ID cursor can replay older messages
+once; the next `ack` writes the new format. Do not use older bb builds against
+new cursors. `watch` reads without writing or upgrading them.
+
 ## Protocol (dot collaboration)
 
 1. Session start: `bb unread --ack` before touching any dot.

@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-13",
+  "baseline": "440d2408",
+  "compiler_release": "c53b4d2c",
+  "artifacts": {
+    "main.f": {
+      "bytes": 47788,
+      "sha256": "25d7894b9ea7da9566cac6ea54a75045a18ced2511a0779251e773dfabf8671a"
+    },
+    "bin/bb": {
+      "bytes": 115836,
+      "sha256": "9543cdc0bf046a197ad8a8c7d14d729354ef4f74deca575d4504d6c6049615cd"
+    },
+    "tests/reference/main.zig": {
+      "bytes": 19284,
+      "sha256": "5988730e7552e26092e7f6a9b89ae6143829d76aed19da55df1f45d10f9c837b"
+    },
+    "tests/reference/blackboard.zig": {
+      "bytes": 18215,
+      "sha256": "dffac7a1fef988d922cb1a3d0a3359ae10a5f3d29140fb32ae0f2611ad54840b"
+    },
+    "zig-reference": {
+      "bytes": 223760,
+      "sha256": "73574a1d6a649261b16a5ecddd103a9e707c54c33bbacf641c44842bcfacc7db"
+    },
+    "compiler": {
+      "bytes": 2774263,
+      "sha256": "ccf0798dd4e11a3ea4308386704bd09a5f183750d18b802b9b2d9c28d6af2b96"
+    },
+    "installed": {
+      "bytes": 473408,
+      "sha256": "82f07b5666d57e4dd897a67d79aa027581f1df9c277bdca668b706e89295e5ed"
+    }
+  },
+  "differential": {
+    "passed": 135,
+    "total": 135,
+    "intentional_differences": [
+      "exact acknowledged-ID sets",
+      "legacy singleton replay",
+      "no receipt changes on failed unread",
+      "malformed message filename",
+      "serialized-message read capacity"
+    ]
+  },
+  "regressions": {
+    "passed": 39,
+    "total": 39,
+    "command": "python3 tests/regressions.py bin/bb --watch"
+  },
+  "independent_review": {
+    "all_source_hunks_reviewed": true,
+    "initial_findings": 3,
+    "remaining_findings": 0,
+    "followup_checks_passed": 8,
+    "followup_checks_total": 8
+  },
+  "extended": {
+    "passed": 26,
+    "total": 26,
+    "cases": [
+      "30s-native-watch",
+      "48-concurrent-posts",
+      "cancel-restart-watch",
+      "cancelled-stdin-restart",
+      "deleted-file-recreated-same-name",
+      "filtered-new-channel-watch",
+      "held-board-after-replacement",
+      "irrelevant-tmp-events-timeout",
+      "registered-channel-moved-inside-board",
+      "registered-channel-moved-outside-board",
+      "replacement-channel-ignored",
+      "slow-stdin-atomic-visible",
+      "slow-stdin-atomic-watch"
+    ],
+    "binaries": [
+      "repaired Habu",
+      "frozen Zig reference"
+    ]
+  },
+  "bulk": {
+    "passed": true,
+    "messages": 2400,
+    "channels": 13,
+    "largest_channel": 1200,
+    "identical_output": true,
+    "output": [
+      {
+        "args": [
+          "log",
+          "--all"
+        ],
+        "bytes": 1560090,
+        "sha256": "99c7892fa24ec6ddb36659f92d98694406338ec1529b5dea02200a48b898c9a9"
+      },
+      {
+        "args": [
+          "unread",
+          "--ack"
+        ],
+        "bytes": 3116490,
+        "sha256": "dab2087de4fe8b3985d493df0d547d2da95a21e48bd2221001d9b5226eee05be"
+      },
+      {
+        "args": [
+          "unread"
+        ],
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "args": [
+          "ack"
+        ],
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "candidate_cursor_bytes": 76982,
+    "reference_cursor_bytes": 403,
+    "exact_cursor_contents_verified": true
+  },
+  "cursor_crash": {
+    "rc": -25,
+    "expected_signal": -25,
+    "cursor_unchanged": true,
+    "all_new_mail_unread": true,
+    "staging_sizes": {
+      ".tmp-7ec7": 100
+    },
+    "stderr": "b''",
+    "restart_ack_succeeded": true
+  },
+  "installed_changed": false,
+  "pushed": false
+}

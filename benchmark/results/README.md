@@ -1,4 +1,7 @@
-# Accepted macOS differential result
+# Historical macOS differential result
+
+> Historical result: the later correctness audit found issues this comparison
+> missed. See [the repairs and current verification](correctness-2026-10-13.md).
 
 The Habu port was checked against the complete Blackboard CLI at upstream
 commit `614c8774ab70cd48782c7fe8e38a527aa78c3d5b`. The Zig reference

@@ -21,7 +21,21 @@ timeout; it does not advance your cursor. Run `bb unread --ack` afterward.
 A post becomes one immutable file under `.blackboard/channels/<channel>/`.
 The program writes the complete file into `.blackboard/tmp/` and renames it
 into the channel. Each reader has an independent cursor. `bb log --md` renders
-a transcript, and the files remain readable with ordinary tools.
+a transcript, and the files remain readable with ordinary tools. Message bodies
+may contain up to 1 MiB; reads also allow the frontmatter added by `post`.
+
+Cursors record the exact acknowledged message IDs, so a file published late
+remains unread even if its timestamp or random suffix sorts before an earlier
+message. Acknowledgements merge with existing history and publish atomically.
+`unread --ack` prints successfully before committing its captured scan;
+`watch` never acknowledges or changes a cursor.
+
+Upgrading an old single-ID cursor can replay older messages once: the old file
+cannot establish whether those messages were seen or arrived late. Only its
+named ID is treated as acknowledged. The next `ack` or `unread --ack` writes
+the new format. Do not alternate old and new executables against these cursors;
+the old executable cannot read the new format. Cursor storage grows with
+acknowledged history, including IDs whose messages were subsequently removed.
 
 ## Build and install
 
@@ -36,8 +50,8 @@ mkdir -p ~/.local/bin
 install -m 755 bin/bb ~/.local/bin/bb
 ```
 
-The accepted macOS arm64 binary measures **115,836 bytes**. It supports all
-seven commands: `init`, `post`, `log`, `unread`, `ack`, `watch`, and `channels`.
+It supports all seven commands: `init`, `post`, `log`, `unread`, `ack`, `watch`,
+and `channels`.
 `watch` uses native FSEvents for event-driven wakeups, including newly created
 channels and messages in the opened board after it moves. Other operating
 systems are not covered by this Habu port.
@@ -53,12 +67,17 @@ from the repository root. The test creates only synthetic boards in ignored
 sh build.sh
 sh tests/build-reference.sh
 python3 tests/differential.py .build/bb-zig-reference bin/bb
+python3 tests/regressions.py bin/bb --watch
 ```
 
-The accepted native runs passed **135/135** cases against the ordinary stripped
-Zig ReleaseSmall reference and a smaller signed Zig variant. The ordinary
-reference measured 223,760 bytes; the smaller variant measured 170,752 bytes.
-See [validation evidence](benchmark/results/README.md) for the limits and review.
+The original port passed 135 differential cases, but later correctness testing
+found regressions and defects shared with Zig. The preserved reference stays
+unchanged: intentional cursor and diagnostic differences have exact assertions,
+and unaffected outputs and board state still compare strictly. The regression
+suite checks the corrected behavior separately, including delayed delivery,
+maximum-size posts, permission errors, cursor ownership, and concurrent access.
+See [current correctness evidence](benchmark/results/correctness-2026-10-13.md)
+and [historical parity results](benchmark/results/README.md).
 The original Zig implementation remains on the
 [`zig` branch](https://github.com/joelreymont/blackboard/tree/zig).
 
